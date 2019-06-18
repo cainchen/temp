@@ -1,63 +1,103 @@
 #!/usr/bin/env bash
 clear
-add_key () {
+add_user() {
+ls ./userlist >/dev/null 2>&1
+sudo rm -f ./new_userlist
+if [ $? != '0' ];
+then
+  printf "\033[41;33mFail!!\033[0m ./userlist not found and processed interrupt."
+  exit 1
+else
+  list=$(cat ./userlist | wc -l) >/dev/null 2>&1
+  if [ "$list" == '0' ];
+  then
+    printf "\033[41;33mFail!!\033[0m ./userlist not have any user name and processed interrupt."
+    exit 1
+  else
+    for i in $(cat ./userlist)
+    do
+      id $i >/dev/null 2>&1
+      if [ $? == '0' ];
+      then
+        printf "\033[30;0mInfo.\033[0m $i have existed.\n"
+      else
+	echo $i >> ./new_userlist
+        sudo useradd $i
+        id $i
+      fi
+    done
+  fi
+  ls ./new_userlist >/dev/null 2>&1
+  if [ $? != '0' ];
+  then
+    printf "\033[33;40mAttention!!\033[0m all accounts you want to create have existed, nothing to do."
+    exit 1
+  fi
+fi
+}
+add_pass() {
+for j in $(cat ./new_userlist)
+do
+  echo qW58plmK | sudo passwd $j --stdin
+done
+}
+add_key() {
+for k in $(cat ./new_userlist)
+do
+  ls ./$k >/dev/null 2>&1
+  if [ $? != '0' ];
+  then
+    printf "\033[41;33mFail!!\033[0mThe new account $k ssh public key file are not found in current path. \
+	   \nThe account \033[40;36m$k\033[0m will be remove.\n"
+    sudo userdel -r $k
+  else
+    sudo mkdir -p /home/$k/.ssh
+    sudo mv ./$k /home/$k/.ssh/authorized_keys
+    sudo chown -R $k:$k /home/$k
+    sudo chmod 600 /home/$k/.ssh/authorized_keys
+  fi
+done
+printf "Thank you for your using, bye bye!!\n"
+}
+printf "Welcome to use this script for adding new user account.\n"
+printf "Input any key to add user account.\n" && read go
+add_user
 while true;
 do
-  printf "Do you need to add a ssh public key for the new account \033[40:36m$name\033[0m (y/n)?" && read yn4
-  case $yn4 in
-  [Yy]* ) mkdir -p /home/$name/.ssh
-	  chown -R $name:$name /home/$name
-
-}
-yn3=y
-while [ "$yn5" == 'y' ];
-do
-  while true;
-  do
-    read -p "Input the full name for create a new account it's shall not same the now esixts(ex. peterwu): " name
-    printf "Your input is \033[40;36m$name\033[0m\n"
-    printf "Does input is correctly? Push \033[44;37mY/y\033[0m go to next or push any key for re-input: " && read yn1
-    case $yn1 in
-    [Yy]) id $name
-          if [ $? == '0' ];
-          then
-            printf "\033[41;33mFail!!\033[0m The name now is existed please input another one.\n"
-            continue
-          else
-	    useradd $name
-            printf "\033[40;36mAccount have been created:\033[0m\n"
-	    id $name
-	    printf "Do you need to set a password for the new account \033[40:36m$name\033[0m (y/n)?" && read yn2
-            case $yn2 in
-            [Yy]) printf "Input password: " $password
-		  printf "Your input is \033[40;36m$password\033[0m\n"
-		  printf "Does input is correctly? Push \033[44;37mY/y\033[0m go to next or push any key for re-input:" && read yn3
-		  [Yy]) echo $password | passwd $name --stdin
-		    * ) printf "\033[40;37mRe-input now.\033[0m\n"
-		        continue
-			;;
-                  esac
-                        while true;
-                        do
-                          printf "\n\033[40;37mDo you want to add another account(y/n)?\033[0m " && read yn4
-                          case $yn3 in
-                          [y]) func1 
-                               break ;;
-                          [n]) printf "\033[40;33mExit now!!\033[0m\n" 
-                               func1
-                               exit 0
-                          esac
-                        done
-                        ;;
-            *) printf "\033[40;37mRe-input now.\033[0m\n"
-               continue
-               ;;
-               esac
-          fi
-          ;;
-     * ) printf "\033[40;37mRe-input now.\033[0m\n"
-         break
-         ;;
-    esac
-  done
+  printf "Do you want to set a defualt password '\033[40;36mqW58plmK\033[0m' for the all new accounts (y/n)? " && read yn1
+  case $yn1 in
+  [Yy]*) add_pass
+	 while true;
+         do
+	   printf "Do you want to add a \033[40;36mssh public key\033[0m for the all new accounts (y/n)? " && read yn2
+	   case $yn2 in
+	   [Yy]*) add_key
+	          break ;;
+	   [Nn]*) printf "Thank you for your using, bye bye!!\n"
+		  exit 0
+                  ;;
+	   * ) printf "Input error!! please input \033[33;43mY/y\033[0m or \033[33;43mN/n\033[0m.\n"
+	       continue
+	   esac
+         done
+	 break ;;
+  [Nn]*) while true;
+         do
+           printf "Do you want to add a \033[40;36mssh public key\033[0m for the all new accounts (y/n)? " && read yn3
+           case $yn3 in
+           [Yy]*) add_key
+  		  break ;;
+  	   [Nn]*) printf "Please remember all the new accounts both are not have setting password and not have ssh public key.\n"
+  	 	  exit 0
+		  ;;
+  	   * ) printf "Input error!! please input \033[33;43mY/y\033[0m or \033[33;43mN/n\033[0m.\n"
+	       continue
+	       ;;
+	   esac
+	 done
+      break ;;
+  * ) printf "Input error!! please input \033[33;43mY/y\033[0m or \033[33;43mN/n\033[0m.\n"
+      continue
+      ;;
+  esac
 done
